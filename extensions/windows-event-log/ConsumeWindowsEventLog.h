@@ -135,6 +135,9 @@ private:
   int batch_commit_size_;
   bool writeXML_;
   bool writePlainText_;
+  uint64_t eventCount_{};
+  uint64_t prevEventCount_{};
+  std::chrono::time_point<std::chrono::system_clock> prevTime_;
 };
 
 REGISTER_RESOURCE(ConsumeWindowsEventLog, "Windows Event Log Subscribe Callback to receive FlowFiles from Events on Windows.");

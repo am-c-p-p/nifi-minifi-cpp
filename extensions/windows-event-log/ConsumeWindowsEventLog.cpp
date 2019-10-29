@@ -282,6 +282,8 @@ bool ConsumeWindowsEventLog::subscribe(const std::shared_ptr<core::ProcessContex
     logger_->log_info("inactiveDurationToReconnect: [%lld] ms", inactiveDurationToReconnect_);
   }
 
+  prevTime_ = std::chrono::system_clock::now();
+
   subscriptionHandle_ = EvtSubscribe(
       NULL,
       NULL,
@@ -291,10 +293,23 @@ bool ConsumeWindowsEventLog::subscribe(const std::shared_ptr<core::ProcessContex
       this,
       [](EVT_SUBSCRIBE_NOTIFY_ACTION action, PVOID pContext, EVT_HANDLE eventHandle)
       {
-  
         auto pConsumeWindowsEventLog = static_cast<ConsumeWindowsEventLog*>(pContext);
 
         auto& logger = pConsumeWindowsEventLog->logger_;
+
+        auto& eventCount = pConsumeWindowsEventLog->eventCount_;
+        eventCount++;
+
+        auto& prevEventCount = pConsumeWindowsEventLog->prevEventCount_;
+
+        auto& prevTime = pConsumeWindowsEventLog->prevTime_;
+
+        auto now = std::chrono::system_clock::now();
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - prevTime).count() > 60000) {
+          logger->log_info("total events: %lld events/min: %lld", eventCount, eventCount - prevEventCount);
+          prevEventCount = eventCount;
+          prevTime = now;
+        }
 
         if (action == EvtSubscribeActionError) {
           if (ERROR_EVT_QUERY_RESULT_STALE == (DWORD)eventHandle) {
@@ -453,10 +468,7 @@ int ConsumeWindowsEventLog::processQueue(const std::shared_ptr<core::ProcessSess
     flowFileCount++;
 
     if (batch_commit_size_ != 0 && (flowFileCount % batch_commit_size_ == 0)) {
-      auto before_commit = std::chrono::high_resolution_clock::now();
-      session->commit();
-	  logger_->log_info("processQueue commit took %llu ms",
-        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - before_commit).count());
+      break;
     }
   }
 
