@@ -112,6 +112,8 @@ void dumpDocs(const std::shared_ptr<minifi::Configure> &configuration, const std
 
 int main(int argc, char **argv) {
 #ifdef WIN32
+  SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+
   RunAsServiceIfNeeded();
 
   bool isStartedByService = false;
